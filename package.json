@@ -14,6 +14,7 @@
     "@reown/appkit-adapter-solana": "1.8.9",
     "@reown/appkit-adapter-wagmi": "1.8.9",
     "@tanstack/react-query": "5.90.2",
+    "alchemy-sdk": "^3.6.5",
     "ethers": "5.7.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",
