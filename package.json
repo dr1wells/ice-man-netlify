@@ -1,0 +1,27 @@
+{
+  "name": "wallettest",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --strictPort"
+  },
+  "dependencies": {
+    "@reown/appkit": "1.8.9",
+    "@reown/appkit-adapter-bitcoin": "1.8.9",
+    "@reown/appkit-adapter-solana": "1.8.9",
+    "@reown/appkit-adapter-wagmi": "1.8.9",
+    "@tanstack/react-query": "5.90.2",
+    "ethers": "5.7.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "viem": "2.38.0",
+    "wagmi": "2.18.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.3.6"
+  }
+}

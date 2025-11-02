@@ -1,0 +1,11 @@
+// src/lib/tokens.js
+export const USDT = {
+  1:     '0xdAC17F958D2ee523a2206206994597C13D831ec7',     // Ethereum (ERC-20)
+  137:   '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',     // Polygon (ERC-20)
+  56:    '0x55d398326f99059fF775485246999027B3197955',     // BSC (BEP-20)
+  42161: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',     // Arbitrum One (ERC-20)
+  10:    '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58',     // Optimism (ERC-20)
+  43114: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7',     // Avalanche C (ERC-20)
+  8453:  '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',     // Base (Bridged USDT)
+  5000:  '0x201EBa5CC46D216Ce6DC03F6a759e8E766e956Ae'      // Mantle (Bridged USDT)
+}
