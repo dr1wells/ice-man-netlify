@@ -18,7 +18,7 @@ const evmNetworks = [mantle, mainnet, polygon, arbitrum, base, optimism, bsc, av
 const solNetworks = [solana, solanaTestnet]
 const btcNetworks = [bitcoin, bitcoinTestnet]
 
-// 3) Adapters
+// 3) Adapters for different wallet types
 const wagmiAdapter = new WagmiAdapter({ projectId, networks: evmNetworks })
 const solanaAdapter = new SolanaAdapter({})
 const bitcoinAdapter = new BitcoinAdapter({})
@@ -34,7 +34,7 @@ const metadata = {
   icons: ['https://raw.githubusercontent.com/twitter/twemoji/master/assets/svg/1f4b0.svg']
 }
 
-// 5) Create AppKit modal
+// 5) Create AppKit modal (connects with multiple networks simultaneously)
 export const appKit = createAppKit({
   adapters: [wagmiAdapter, solanaAdapter, bitcoinAdapter],
   networks: [...evmNetworks, ...solNetworks, ...btcNetworks],
@@ -52,6 +52,7 @@ export const appKit = createAppKit({
 export function openConnectModal() {
   appKit.open()
 }
+
 export function openNetworkModal() {
   appKit.open({ view: 'Networks' })
 }
