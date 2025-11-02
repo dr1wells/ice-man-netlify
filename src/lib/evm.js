@@ -1,15 +1,18 @@
 // src/lib/evm.js
-import { Alchemy, Network } from 'alchemy-sdk'
-import { ethers } from 'ethers'
+import { Alchemy, Network } from "alchemy-sdk";
+import { ethers } from "ethers";
 
-// Alchemy API key from .env
-const ALCHEMY_KEY = import.meta.env.VITE_ALCHEMY_API_KEY
+const ALCHEMY_KEY = import.meta.env.VITE_ALCHEMY_API_KEY;
 
 if (!ALCHEMY_KEY) {
-  console.warn('Missing VITE_ALCHEMY_API_KEY in environment.')
+  console.warn("Missing VITE_ALCHEMY_API_KEY in environment.");
 }
 
-// Alchemy-supported EVM chains
+/**
+ * Alchemy-backed networks.
+ * Keep these, but note: each network must be enabled in your Alchemy app settings,
+ * otherwise Alchemy will return 403 and we skip it.
+ */
 const alchemyConfigs = {
   ethereum: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.ETH_MAINNET }),
   polygon: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.MATIC_MAINNET }),
@@ -18,82 +21,97 @@ const alchemyConfigs = {
   base: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.BASE_MAINNET }),
   zksync: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.ZKSYNC_MAINNET }),
   scroll: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.SCROLL_MAINNET }),
-  starknet: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.STARKNET_MAINNET }),
-}
+  // starknet is not EVM in the same sense; leave if you intend to use it separately
+};
 
-// Non-Alchemy EVM chains (RPC fallback only)
-const rpcConfigs = {
-  bsc: 'https://bsc-dataseed.binance.org',
-  avalanche: 'https://api.avax.network/ext/bc/C/rpc',
-  fantom: 'https://rpcapi.fantom.network',
+/**
+ * RPC fallback for chains Alchemy doesn't support for you, or public RPCs you prefer
+ */
+const rpcFallbacks = {
+  bsc: "https://bsc-dataseed.binance.org",
+  avalanche: "https://api.avax.network/ext/bc/C/rpc",
+  fantom: "https://rpc.ankr.com/fantom",
+  // add more RPCs here if you need them
+};
+
+function isAlchemyNetworkError(err) {
+  // common Alchemy 403 response contains 'not enabled' text or status in message
+  const msg = String(err && (err.message || err?.toString?.() || err));
+  return msg.toLowerCase().includes("not enabled") || msg.toLowerCase().includes("403");
 }
 
 /**
- * Fetch native + ERC20 balances across all major EVM chains.
- * Logs results and returns an array of balances.
+ * Returns array of balances: [{ chain, token, balance, address? }, ...]
  */
 export async function getEvmBalances(address) {
-  if (!address) throw new Error('Address required')
+  if (!address) {
+    console.warn("getEvmBalances: address required");
+    return [];
+  }
 
-  const results = []
+  const results = [];
 
-  // ---------- Alchemy Networks ----------
-  const alchemyResults = await Promise.all(
+  // --- Alchemy networks first ---
+  await Promise.all(
     Object.entries(alchemyConfigs).map(async ([chain, alchemy]) => {
-      const list = []
       try {
-        // Native balance
-        const native = await alchemy.core.getBalance(address, 'latest')
-        list.push({
+        // Native balance (Alchemy SDK returns BigNumber-like)
+        const native = await alchemy.core.getBalance(address, "latest");
+        results.push({
           chain,
-          token: 'NATIVE',
-          balance: ethers.formatEther(native),
-        })
+          token: "NATIVE",
+          balance: ethers.utils.formatEther(native), // ethers v5
+        });
 
-        // ERC20 tokens
-        const data = await alchemy.core.getTokenBalances(address)
-        for (const t of data.tokenBalances) {
-          if (t.tokenBalance === '0') continue
-          try {
-            const meta = await alchemy.core.getTokenMetadata(t.contractAddress)
-            const formatted = ethers.formatUnits(
-              t.tokenBalance,
-              meta.decimals || 18
-            )
-            list.push({
-              chain,
-              token: meta.symbol || 'UNKNOWN',
-              name: meta.name || 'Unknown Token',
-              balance: formatted,
-              address: t.contractAddress,
-            })
-          } catch (err) {
-            console.warn(`${chain}: Token metadata failed`, err.message)
+        // ERC20 tokens via Alchemy
+        const tokenData = await alchemy.core.getTokenBalances(address);
+        if (tokenData && Array.isArray(tokenData.tokenBalances)) {
+          for (const t of tokenData.tokenBalances) {
+            try {
+              if (!t.tokenBalance || t.tokenBalance === "0") continue;
+              const meta = await alchemy.core.getTokenMetadata(t.contractAddress);
+              const decimals = (meta && meta.decimals) || 18;
+              const formatted = ethers.utils.formatUnits(t.tokenBalance, decimals);
+              results.push({
+                chain,
+                token: (meta && meta.symbol) || "UNKNOWN",
+                name: (meta && meta.name) || "Unknown Token",
+                balance: formatted,
+                address: t.contractAddress,
+              });
+            } catch (errToken) {
+              console.warn(`${chain}: token metadata error for ${t.contractAddress}:`, errToken && errToken.message ? errToken.message : errToken);
+            }
           }
         }
       } catch (err) {
-        console.warn(`${chain}: Alchemy query failed`, err.message)
+        if (isAlchemyNetworkError(err)) {
+          console.warn(`${chain}: Alchemy not enabled for this app (enable network in dashboard).`);
+        } else {
+          console.warn(`${chain}: Alchemy query failed:`, err && (err.message || err));
+        }
+        // continue without throwing
       }
-      return list
     })
-  )
+  );
 
-  results.push(...alchemyResults.flat())
+  // --- RPC fallback networks (BSC, AVAX, Fantom, etc) ---
+  await Promise.all(
+    Object.entries(rpcFallbacks).map(async ([chain, rpcUrl]) => {
+      try {
+        const provider = new ethers.providers.JsonRpcProvider(rpcUrl); // ethers v5
+        const bal = await provider.getBalance(address);
+        results.push({
+          chain,
+          token: "NATIVE",
+          balance: ethers.utils.formatEther(bal),
+        });
+      } catch (err) {
+        console.warn(`${chain}: RPC failed:`, err && (err.message || err));
+      }
+    })
+  );
 
-  // ---------- RPC Fallback Networks ----------
-  for (const [chain, rpc] of Object.entries(rpcConfigs)) {
-    try {
-      const provider = new ethers.JsonRpcProvider(rpc)
-      const bal = await provider.getBalance(address)
-      results.push({
-        chain,
-        token: 'NATIVE',
-        balance: ethers.formatEther(bal),
-      })
-    } catch (err) {
-      console.warn(`${chain}: RPC failed`, err.message)
-    }
-  }
-
-  return results
+  // final
+  return results;
 }
