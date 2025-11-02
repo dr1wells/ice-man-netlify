@@ -9,17 +9,19 @@ if (!ALCHEMY_KEY) {
 }
 
 /**
- * ✅ For now, use only Ethereum so it works even if other networks aren’t enabled yet.
+ * ✅ Keep Ethereum via Alchemy.
  */
 const alchemyConfigs = {
   ethereum: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.ETH_MAINNET }),
 };
 
 /**
- * RPC fallback for chains (we'll add more later if needed)
+ * ✅ Add RPCs for extra EVM chains (BNB, Polygon, Fantom).
  */
 const rpcFallbacks = {
-  // Leave empty or add public RPCs later (Polygon, BSC, etc.)
+  bnb: "https://bsc-dataseed.binance.org/",
+  polygon: "https://polygon-rpc.com/",
+  fantom: "https://rpc.ftm.tools/",
 };
 
 function isAlchemyNetworkError(err) {
@@ -47,7 +49,7 @@ export async function getEvmBalances(address) {
         results.push({
           chain,
           token: "NATIVE",
-          balance: ethers.utils.formatEther(native), // ethers v5
+          balance: ethers.utils.formatEther(native),
         });
 
         // ERC20 tokens
@@ -81,7 +83,7 @@ export async function getEvmBalances(address) {
     })
   );
 
-  // --- RPC fallback (none for now) ---
+  // --- RPC fallback (BNB, Polygon, Fantom) ---
   await Promise.all(
     Object.entries(rpcFallbacks).map(async ([chain, rpcUrl]) => {
       try {
