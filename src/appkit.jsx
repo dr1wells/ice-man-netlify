@@ -1,109 +1,66 @@
-// src/appkit.jsx
-import React, { useEffect, useState } from 'react'
-import { useAccount, useChainId } from 'wagmi'
-import { openConnectModal, openNetworkModal } from './lib/AppKitProvider'
-import { readErc20Balance } from './lib/erc20'
-import { USDT } from './lib/tokens'
-import { logNetworkChange, logWallet } from './api/log'
-import ConnectModal from './components/ConnectModal'
+// src/lib/AppKitProvider.jsx
+import React from 'react'
+import { createAppKit } from '@reown/appkit'
+import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
+import { SolanaAdapter } from '@reown/appkit-adapter-solana'
+import { BitcoinAdapter } from '@reown/appkit-adapter-bitcoin'
+import {
+  mantle, mainnet, polygon, arbitrum, base, optimism, bsc, avalanche,
+  solana, solanaTestnet, bitcoin, bitcoinTestnet
+} from '@reown/appkit/networks'
+import { WagmiProvider } from 'wagmi'
 
-function truncate(addr) {
-  return addr ? addr.slice(0, 6) + '...' + addr.slice(-4) : ''
+// 1) WalletConnect / Reown Cloud project ID
+const projectId = 'b1b4be2183b2cb322d11e2b0c098a425'
+
+// 2) Networks
+const evmNetworks = [mantle, mainnet, polygon, arbitrum, base, optimism, bsc, avalanche]
+const solNetworks = [solana, solanaTestnet]
+const btcNetworks = [bitcoin, bitcoinTestnet]
+
+// 3) Adapters
+const wagmiAdapter = new WagmiAdapter({ projectId, networks: evmNetworks })
+const solanaAdapter = new SolanaAdapter({})
+const bitcoinAdapter = new BitcoinAdapter({})
+
+// Export wagmiConfig for hooks (useAccount, etc.)
+export const wagmiConfig = wagmiAdapter.wagmiConfig
+
+// 4) Metadata for AppKit modal
+const metadata = {
+  name: 'NeonVault',
+  description: 'Creative wallet-gated site',
+  url: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173',
+  icons: ['https://raw.githubusercontent.com/twitter/twemoji/master/assets/svg/1f4b0.svg']
 }
 
-export default function AppKit() {
-  const { address, status, isConnected } = useAccount()
-  const chainId = useChainId()
-  const [log, setLog] = useState('')
-  const [showConnect, setShowConnect] = useState(false)
-
-  // Wallet logs
-  useEffect(() => {
-    if (isConnected && address) logWallet('connected', address)
-    else if (status === 'disconnected') logWallet('disconnected')
-  }, [isConnected, status, address])
-
-  // Network logs
-  useEffect(() => {
-    if (chainId) logNetworkChange({ id: chainId })
-  }, [chainId])
-
-  async function onReadUSDT_EVM() {
-    try {
-      if (!isConnected) return setLog('Connect an EVM wallet first.')
-      const token = USDT[chainId]
-      if (!token) return setLog(`No EVM USDT configured for chain ${chainId}.`)
-      const bal = await readErc20Balance(token, address)
-      setLog(`EVM USDT on chain ${chainId}: ${bal.formatted} ${bal.symbol}`)
-    } catch (e) {
-      setLog(String(e?.message || e))
-    }
+// 5) Create AppKit modal
+export const appKit = createAppKit({
+  adapters: [wagmiAdapter, solanaAdapter, bitcoinAdapter],
+  networks: [...evmNetworks, ...solNetworks, ...btcNetworks],
+  projectId,
+  metadata,
+  features: { analytics: true },
+  defaultAccountTypes: {
+    eip155: 'eoa',    // EVM
+    solana: 'wallet', // Solana
+    bip122: 'payment' // Bitcoin
   }
+})
 
+// 6) Helper functions (use these in React components)
+export function openConnectModal() {
+  appKit.open()
+}
+export function openNetworkModal() {
+  appKit.open({ view: 'Networks' })
+}
+
+// 7) Provider component
+export function AppKitProvider({ children }) {
   return (
-    <div className="container">
-      {/* NAV */}
-      <nav className="nav">
-        <div className="brand">
-          <img className="brand-icon" src="/favicon.svg" alt="" />
-          <span className="brand-title">NeonVault</span>
-        </div>
-        <div className="flex gap-2">
-          <button className="btn btn-primary" onClick={() => setShowConnect(true)}>
-            {isConnected ? `${truncate(address)} • Wallet` : 'Connect Wallet'}
-          </button>
-          {isConnected && (
-            <button className="btn btn-outline" onClick={openNetworkModal}>
-              Networks
-            </button>
-          )}
-        </div>
-      </nav>
-
-      {/* HERO */}
-      <section className="hero">
-        <div>
-          <h1>Gate premium features behind your wallet.</h1>
-
-          <div className="flex gap-2">
-            <button className="btn btn-primary" onClick={() => setShowConnect(true)}>
-              {isConnected ? 'View Wallets' : 'Connect to Continue'}
-            </button>
-            {isConnected && (
-              <button className="btn btn-secondary" onClick={onReadUSDT_EVM}>
-                Read USDT (EVM)
-              </button>
-            )}
-          </div>
-
-          <div className="kpis">
-            <div className="kpi"><h3>Status</h3><p>{status}</p></div>
-            <div className="kpi"><h3>Access</h3><p>{isConnected ? 'Granted' : 'Locked'}</p></div>
-            <div className="kpi"><h3>Address</h3><p>{isConnected ? truncate(address) : '—'}</p></div>
-            <div className="kpi"><h3>Chain</h3><p>{chainId || '—'}</p></div>
-          </div>
-        </div>
-      </section>
-
-      {log && (
-        <section className="mt-4">
-          <pre className="bg-gray-100 p-3 rounded text-sm whitespace-pre-wrap">{log}</pre>
-        </section>
-      )}
-
-      <footer className="footer">
-        NeonVault • Built with AppKit + Wagmi • {new Date().getFullYear()}
-      </footer>
-
-      {/* Connect Modal */}
-      <ConnectModal
-        open={showConnect}
-        onClose={() => setShowConnect(false)}
-        onOpenAppKit={() => {
-          setShowConnect(false)
-          openConnectModal()
-        }}
-      />
-    </div>
+    <WagmiProvider config={wagmiConfig}>
+      {children}
+    </WagmiProvider>
   )
 }
