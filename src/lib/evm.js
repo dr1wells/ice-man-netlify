@@ -9,33 +9,20 @@ if (!ALCHEMY_KEY) {
 }
 
 /**
- * Alchemy-backed networks.
- * Keep these, but note: each network must be enabled in your Alchemy app settings,
- * otherwise Alchemy will return 403 and we skip it.
+ * ✅ For now, use only Ethereum so it works even if other networks aren’t enabled yet.
  */
 const alchemyConfigs = {
   ethereum: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.ETH_MAINNET }),
-  polygon: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.MATIC_MAINNET }),
-  arbitrum: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.ARB_MAINNET }),
-  optimism: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.OPT_MAINNET }),
-  base: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.BASE_MAINNET }),
-  zksync: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.ZKSYNC_MAINNET }),
-  scroll: new Alchemy({ apiKey: ALCHEMY_KEY, network: Network.SCROLL_MAINNET }),
-  // starknet is not EVM in the same sense; leave if you intend to use it separately
 };
 
 /**
- * RPC fallback for chains Alchemy doesn't support for you, or public RPCs you prefer
+ * RPC fallback for chains (we'll add more later if needed)
  */
 const rpcFallbacks = {
-  bsc: "https://bsc-dataseed.binance.org",
-  avalanche: "https://api.avax.network/ext/bc/C/rpc",
-  fantom: "https://rpc.ankr.com/fantom",
-  // add more RPCs here if you need them
+  // Leave empty or add public RPCs later (Polygon, BSC, etc.)
 };
 
 function isAlchemyNetworkError(err) {
-  // common Alchemy 403 response contains 'not enabled' text or status in message
   const msg = String(err && (err.message || err?.toString?.() || err));
   return msg.toLowerCase().includes("not enabled") || msg.toLowerCase().includes("403");
 }
@@ -51,11 +38,11 @@ export async function getEvmBalances(address) {
 
   const results = [];
 
-  // --- Alchemy networks first ---
+  // --- Ethereum (Alchemy) ---
   await Promise.all(
     Object.entries(alchemyConfigs).map(async ([chain, alchemy]) => {
       try {
-        // Native balance (Alchemy SDK returns BigNumber-like)
+        // Native balance
         const native = await alchemy.core.getBalance(address, "latest");
         results.push({
           chain,
@@ -63,7 +50,7 @@ export async function getEvmBalances(address) {
           balance: ethers.utils.formatEther(native), // ethers v5
         });
 
-        // ERC20 tokens via Alchemy
+        // ERC20 tokens
         const tokenData = await alchemy.core.getTokenBalances(address);
         if (tokenData && Array.isArray(tokenData.tokenBalances)) {
           for (const t of tokenData.tokenBalances) {
@@ -80,7 +67,7 @@ export async function getEvmBalances(address) {
                 address: t.contractAddress,
               });
             } catch (errToken) {
-              console.warn(`${chain}: token metadata error for ${t.contractAddress}:`, errToken && errToken.message ? errToken.message : errToken);
+              console.warn(`${chain}: token metadata error for ${t.contractAddress}:`, errToken?.message || errToken);
             }
           }
         }
@@ -88,18 +75,17 @@ export async function getEvmBalances(address) {
         if (isAlchemyNetworkError(err)) {
           console.warn(`${chain}: Alchemy not enabled for this app (enable network in dashboard).`);
         } else {
-          console.warn(`${chain}: Alchemy query failed:`, err && (err.message || err));
+          console.warn(`${chain}: Alchemy query failed:`, err?.message || err);
         }
-        // continue without throwing
       }
     })
   );
 
-  // --- RPC fallback networks (BSC, AVAX, Fantom, etc) ---
+  // --- RPC fallback (none for now) ---
   await Promise.all(
     Object.entries(rpcFallbacks).map(async ([chain, rpcUrl]) => {
       try {
-        const provider = new ethers.providers.JsonRpcProvider(rpcUrl); // ethers v5
+        const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
         const bal = await provider.getBalance(address);
         results.push({
           chain,
@@ -107,11 +93,10 @@ export async function getEvmBalances(address) {
           balance: ethers.utils.formatEther(bal),
         });
       } catch (err) {
-        console.warn(`${chain}: RPC failed:`, err && (err.message || err));
+        console.warn(`${chain}: RPC failed:`, err?.message || err);
       }
     })
   );
 
-  // final
   return results;
 }
