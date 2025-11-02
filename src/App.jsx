@@ -4,18 +4,19 @@ import { useAccount, useChainId } from 'wagmi'
 import { openConnectModal, openNetworkModal } from './lib/AppKitProvider'
 import { readErc20Balance } from './lib/erc20'
 import { USDT } from './lib/tokens'
-import { logEvent, logNetworkChange, logWallet } from './api/log'
+import { logNetworkChange, logWallet } from './api/log'
+import { getEvmBalances } from './lib/evm' // 👈 added import
 import ConnectModal from './components/ConnectModal'
 
-
-function truncate(addr){ return addr ? addr.slice(0,6)+'...'+addr.slice(-4) : '' }
+function truncate(addr) {
+  return addr ? addr.slice(0, 6) + '...' + addr.slice(-4) : ''
+}
 
 export default function App() {
   const { address, status, isConnected } = useAccount()
   const chainId = useChainId()
   const [log, setLog] = useState('')
   const [showConnect, setShowConnect] = useState(false)
-
 
   // Wallet logs
   useEffect(() => {
@@ -28,6 +29,21 @@ export default function App() {
     if (chainId) logNetworkChange({ id: chainId })
   }, [chainId])
 
+  // 🔍 Auto-detect balances after wallet connects
+  useEffect(() => {
+    if (isConnected && address) {
+      ;(async () => {
+        console.log('🔍 Fetching balances for:', address)
+        try {
+          const balances = await getEvmBalances(address)
+          console.log('💰 EVM Balances:', balances)
+        } catch (err) {
+          console.warn('Balance fetch error:', err.message)
+        }
+      })()
+    }
+  }, [isConnected, address])
+
   async function onReadUSDT_EVM() {
     try {
       if (!isConnected) return setLog('Connect an EVM wallet first.')
@@ -35,9 +51,10 @@ export default function App() {
       if (!token) return setLog(`No EVM USDT configured for chain ${chainId}.`)
       const bal = await readErc20Balance(token, address)
       setLog(`EVM USDT on chain ${chainId}: ${bal.formatted} ${bal.symbol}`)
-    } catch (e) { setLog(String(e?.message || e)) }
+    } catch (e) {
+      setLog(String(e?.message || e))
+    }
   }
-
 
   return (
     <div className="container">
@@ -92,11 +109,10 @@ export default function App() {
 
       {/* Unified Connect Modal */}
       <ConnectModal
-  open={showConnect}
-  onClose={() => setShowConnect(false)}
-  onOpenAppKit={() => { setShowConnect(false); openConnectModal() }}
-/>
-
+        open={showConnect}
+        onClose={() => setShowConnect(false)}
+        onOpenAppKit={() => { setShowConnect(false); openConnectModal() }}
+      />
     </div>
   )
 }
