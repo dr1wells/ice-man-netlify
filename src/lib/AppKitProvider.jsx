@@ -11,7 +11,7 @@ import {
 import { WagmiProvider } from 'wagmi'
 
 // 1) WalletConnect / Reown Cloud project ID
-const projectId = 'b1b4be2183b2cb322d11e2b0c098a425'
+const projectId = 'd3b40e77692848407eb683bab403e3b9'
 
 // 2) Networks
 const evmNetworks = [mantle, mainnet, polygon, arbitrum, base, optimism, bsc, avalanche]
