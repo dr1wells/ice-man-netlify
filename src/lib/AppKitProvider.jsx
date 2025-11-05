@@ -10,35 +10,31 @@ import {
 } from '@reown/appkit/networks'
 import { WagmiProvider } from 'wagmi'
 
-// 🧩 WalletConnect Project ID
-const projectId = 'd3b40e77692848407eb683bab403e3b9'
+// read from env (Vite exposes env vars prefixed with VITE_)
+const WC_PROJECT_ID = import.meta.env.VITE_WC_PROJECT_ID
 
-// 🌐 Networks
 const evmNetworks = [mantle, mainnet, polygon, arbitrum, base, optimism, bsc, avalanche]
 const solNetworks = [solana, solanaTestnet]
 const btcNetworks = [bitcoin, bitcoinTestnet]
 
-// ⚙️ Adapters
-const wagmiAdapter = new WagmiAdapter({ projectId, networks: evmNetworks })
+// adapters
+const wagmiAdapter = new WagmiAdapter({ projectId: WC_PROJECT_ID, networks: evmNetworks })
 const solanaAdapter = new SolanaAdapter({})
 const bitcoinAdapter = new BitcoinAdapter({})
 
-// 📡 wagmi config
 export const wagmiConfig = wagmiAdapter.wagmiConfig
 
-// 🧠 Metadata — matches your deployed site
 const metadata = {
   name: 'NeonVault',
   description: 'Creative wallet-gated site',
-  url: 'https://ice-man.netlify.app',
+  url: 'https://ice-man.netlify.app', // must exactly match what you added to WalletConnect Cloud
   icons: ['https://ice-man.netlify.app/favicon.svg']
 }
 
-// 🚀 Create AppKit Instance
 export const appKit = createAppKit({
   adapters: [wagmiAdapter, solanaAdapter, bitcoinAdapter],
   networks: [...evmNetworks, ...solNetworks, ...btcNetworks],
-  projectId,
+  projectId: WC_PROJECT_ID,
   metadata,
   features: { analytics: true },
   defaultAccountTypes: {
@@ -47,8 +43,9 @@ export const appKit = createAppKit({
     bip122: 'payment'
   },
   walletConnect: {
-    relayUrl: 'wss://relay.walletconnect.org', // ✅ correct relay
-    projectId,
+    // use the projectId in the relay URL query string
+    relayUrl: `wss://relay.walletconnect.com?projectId=${WC_PROJECT_ID}`,
+    projectId: WC_PROJECT_ID,
     metadata
   },
   storageOptions: {
@@ -57,18 +54,15 @@ export const appKit = createAppKit({
   }
 })
 
-// ♻️ Try reconnect
 export function useReconnectWallet() {
   useEffect(() => {
     appKit?.autoConnect?.().catch(err => console.warn('Reconnect failed', err))
   }, [])
 }
 
-// 🔘 Helper functions
 export const openConnectModal = () => appKit.open()
 export const openNetworkModal = () => appKit.open({ view: 'Networks' })
 
-// 🌍 Provider
 export function AppKitProvider({ children }) {
   useReconnectWallet()
   return <WagmiProvider config={wagmiConfig}>{children}</WagmiProvider>
