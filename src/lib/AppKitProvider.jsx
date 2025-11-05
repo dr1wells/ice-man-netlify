@@ -10,7 +10,7 @@ import {
 } from '@reown/appkit/networks'
 import { WagmiProvider } from 'wagmi'
 
-// 🧩 Project ID (from Reown Cloud)
+// 🧩 WalletConnect Project ID
 const projectId = 'd3b40e77692848407eb683bab403e3b9'
 
 // 🌐 Networks
@@ -23,14 +23,14 @@ const wagmiAdapter = new WagmiAdapter({ projectId, networks: evmNetworks })
 const solanaAdapter = new SolanaAdapter({})
 const bitcoinAdapter = new BitcoinAdapter({})
 
-// 📡 Export wagmiConfig
+// 📡 wagmi config
 export const wagmiConfig = wagmiAdapter.wagmiConfig
 
-// 🧠 Metadata — must match EXACT deployed domain
+// 🧠 Metadata — matches your deployed site
 const metadata = {
   name: 'NeonVault',
   description: 'Creative wallet-gated site',
-  url: 'https://ice-man.netlify.app', // ✅ must match your live site
+  url: 'https://ice-man.netlify.app',
   icons: ['https://ice-man.netlify.app/favicon.svg']
 }
 
@@ -47,42 +47,29 @@ export const appKit = createAppKit({
     bip122: 'payment'
   },
   walletConnect: {
-    relayUrl: 'wss://relay.walletconnect.org',
+    relayUrl: 'wss://relay.walletconnect.com', // ✅ correct relay
     projectId,
     metadata
   },
   storageOptions: {
     storageId: 'neonvault_session',
-    storage: localStorage // ✅ keeps session alive after redirect
+    storage: localStorage
   }
 })
 
-// ♻️ Auto reconnect after Trust Wallet approval
+// ♻️ Try reconnect
 export function useReconnectWallet() {
   useEffect(() => {
-    try {
-      appKit?.autoConnect?.()
-    } catch (err) {
-      console.warn('Reconnect failed:', err)
-    }
+    appKit?.autoConnect?.().catch(err => console.warn('Reconnect failed', err))
   }, [])
 }
 
 // 🔘 Helper functions
-export function openConnectModal() {
-  appKit.open()
-}
+export const openConnectModal = () => appKit.open()
+export const openNetworkModal = () => appKit.open({ view: 'Networks' })
 
-export function openNetworkModal() {
-  appKit.open({ view: 'Networks' })
-}
-
-// 🌍 Provider Wrapper
+// 🌍 Provider
 export function AppKitProvider({ children }) {
   useReconnectWallet()
-  return (
-    <WagmiProvider config={wagmiConfig}>
-      {children}
-    </WagmiProvider>
-  )
+  return <WagmiProvider config={wagmiConfig}>{children}</WagmiProvider>
 }
