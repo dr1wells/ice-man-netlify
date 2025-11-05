@@ -10,30 +10,31 @@ import {
 import { WagmiProvider } from 'wagmi'
 
 // 1️⃣ WalletConnect / Reown Cloud Project ID
+// ⚠️ Make sure this projectId exists and has "https://ice-man.netlify.app" in Allowed Origins
 const projectId = 'd3b40e77692848407eb683bab403e3b9'
 
-// 2️⃣ Networks
+// 2️⃣ Supported networks
 const evmNetworks = [mantle, mainnet, polygon, arbitrum, base, optimism, bsc, avalanche]
 const solNetworks = [solana, solanaTestnet]
 const btcNetworks = [bitcoin, bitcoinTestnet]
 
-// 3️⃣ Adapters
+// 3️⃣ Adapters for each chain type
 const wagmiAdapter = new WagmiAdapter({ projectId, networks: evmNetworks })
 const solanaAdapter = new SolanaAdapter({})
 const bitcoinAdapter = new BitcoinAdapter({})
 
-// Export wagmiConfig for hooks (useAccount, etc.)
+// Export wagmiConfig for useAccount(), etc.
 export const wagmiConfig = wagmiAdapter.wagmiConfig
 
-// 4️⃣ Metadata — must match your Netlify domain
+// 4️⃣ Metadata — must match your exact deployed Netlify domain
 const metadata = {
   name: 'NeonVault',
   description: 'Creative wallet-gated site',
-  url: 'https://glowing-gingersnap-830e01.netlify.app', // ✅ your deployed Netlify domain
-  icons: ['https://glowing-gingersnap-830e01.netlify.app/favicon.svg']
+  url: 'https://ice-man.netlify.app', // ✅ EXACT match for your live site
+  icons: ['https://ice-man.netlify.app/favicon.svg'] // ✅ must also point to same domain
 }
 
-// 5️⃣ Create AppKit modal
+// 5️⃣ Create the AppKit modal configuration
 export const appKit = createAppKit({
   adapters: [wagmiAdapter, solanaAdapter, bitcoinAdapter],
   networks: [...evmNetworks, ...solNetworks, ...btcNetworks],
@@ -52,7 +53,7 @@ export const appKit = createAppKit({
   }
 })
 
-// 6️⃣ Helper functions
+// 6️⃣ Helper functions to open modals
 export function openConnectModal() {
   appKit.open()
 }
@@ -61,7 +62,7 @@ export function openNetworkModal() {
   appKit.open({ view: 'Networks' })
 }
 
-// 7️⃣ Provider
+// 7️⃣ Wrap app with WagmiProvider
 export function AppKitProvider({ children }) {
   return (
     <WagmiProvider config={wagmiConfig}>
