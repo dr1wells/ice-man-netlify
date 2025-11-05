@@ -25,12 +25,12 @@ const bitcoinAdapter = new BitcoinAdapter({})
 // Export wagmiConfig for hooks (useAccount, etc.)
 export const wagmiConfig = wagmiAdapter.wagmiConfig
 
-// 4️⃣ Metadata (⚠️ static domain required for mobile Trust Wallet)
+// 4️⃣ Metadata — must match your Netlify domain
 const metadata = {
   name: 'NeonVault',
   description: 'Creative wallet-gated site',
-  url: 'https://ice-man.vercel.app', // ✅ must exactly match your deployed Vercel domain
-  icons: ['https://ice-man.vercel.app/favicon.svg'] // ✅ use your hosted favicon for consistency
+  url: 'https://glowing-gingersnap-830e01.netlify.app', // ✅ your deployed Netlify domain
+  icons: ['https://glowing-gingersnap-830e01.netlify.app/favicon.svg']
 }
 
 // 5️⃣ Create AppKit modal
@@ -46,13 +46,13 @@ export const appKit = createAppKit({
     bip122: 'payment' // Bitcoin wallets
   },
   walletConnect: {
-    relayUrl: 'wss://relay.walletconnect.org', // ✅ ensures mobile wallet handshake works
-    projectId,                                 // ✅ include projectId again here
+    relayUrl: 'wss://relay.walletconnect.com', // ✅ correct relay endpoint
+    projectId,
     metadata
   }
 })
 
-// 6️⃣ Helper functions (use these in your React components)
+// 6️⃣ Helper functions
 export function openConnectModal() {
   appKit.open()
 }
@@ -61,7 +61,7 @@ export function openNetworkModal() {
   appKit.open({ view: 'Networks' })
 }
 
-// 7️⃣ Provider component
+// 7️⃣ Provider
 export function AppKitProvider({ children }) {
   return (
     <WagmiProvider config={wagmiConfig}>
