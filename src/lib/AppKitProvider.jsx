@@ -47,7 +47,7 @@ export const appKit = createAppKit({
     bip122: 'payment'
   },
   walletConnect: {
-    relayUrl: 'wss://relay.walletconnect.com', // ✅ correct relay
+    relayUrl: 'wss://relay.walletconnect.org', // ✅ correct relay
     projectId,
     metadata
   },
